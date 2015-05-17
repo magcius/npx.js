@@ -573,6 +573,20 @@
         mat4.translate(bridge.localMatrix, bridge.localMatrix, [0, 2, 0]);
         scene.attachModel(bridge);
 
+        var keysDown = {};
+        function isKeyDown(key) {
+            return !!keysDown[key.charCodeAt(0)];
+        }
+
+        window.addEventListener('keydown', function(e) {
+            keysDown[e.keyCode] = true;
+        });
+        window.addEventListener('keyup', function(e) {
+            delete keysDown[e.keyCode];
+        });
+
+        var T = 0.35, P = 0.10;
+
         function setCameraFromTP(theta, phi) {
             var camera = mat4.create();
             var rad = 25;
@@ -581,27 +595,38 @@
             var mz = Math.sin(theta) * rad;
             scene.setCamera([mx, my, mz], [0, 0, 0]);
         }
-        setCameraFromTP(0.35, 0.10);
 
         var mouseX = 0, mouseY = 0;
-        function update() {
+        var t = 0;
+
+        function update(nt) {
+            var dt = nt - t;
+            t = nt;
+
             var cbr = canvas.getBoundingClientRect();
             var cx = clamp((mouseX - cbr.left) / cbr.width, 0, 1);
             var cy = clamp((mouseY - cbr.top) / cbr.height, 0, 1);
             var rx = cx * 2 - 1;
             var ry = -(cy * 2 - 1);
 
+            if (isKeyDown('A'))
+            if (isKeyDown('D'))
+            if (isKeyDown('W'))
+            if (isKeyDown('S'))
+            setCameraFromTP(T, P);
+
             scene.castRay(rx, ry);
             scene.render();
+
+            requestAnimationFrame(update);
         }
 
         window.addEventListener('mousemove', function(event) {
             mouseX = event.clientX;
             mouseY = event.clientY;
-            update();
         });
 
-        update();
+        update(0);
     });
 
 })(window);
