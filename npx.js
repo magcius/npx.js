@@ -467,8 +467,8 @@
         var mouseX = 0, mouseY = 0;
         function update() {
             var cbr = canvas.getBoundingClientRect();
-            var cx = clamp((mouseX - cbr.x) / cbr.width, 0, 1);
-            var cy = clamp((mouseY - cbr.y) / cbr.height, 0, 1);
+            var cx = clamp((mouseX - cbr.left) / cbr.width, 0, 1);
+            var cy = clamp((mouseY - cbr.top) / cbr.height, 0, 1);
             var rx = cx * 2 - 1;
             var ry = cy * -2 - 1;
             scene.castRay(rx, ry);
