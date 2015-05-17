@@ -427,10 +427,13 @@
         var mouseX = 0, mouseY = 0;
         function update() {
             var camera = mat4.create();
-            var theta = (mouseX / window.innerWidth) * TAU;
-            var mx = Math.cos(theta) * 25;
-            var my = Math.sin(theta) * 25;
-            mat4.lookAt(camera, [mx, my, 6], [0, 0, 0], [0, 0, 1]);
+            var phi = (mouseX / window.innerWidth - 0.5) * -Math.PI;
+            var theta = (mouseY / window.innerHeight - 0.5) * Math.PI;
+            var rad = 25;
+            var mx = Math.cos(theta) * Math.cos(phi) * rad;
+            var my = Math.cos(theta) * Math.sin(phi) * rad;
+            var mz = Math.sin(theta) * rad;
+            mat4.lookAt(camera, [mx, my, mz], [0, 0, 0], [0, 0, 1]);
             scene.setCamera(camera);
             scene.render();
         }
