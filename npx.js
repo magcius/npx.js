@@ -41,7 +41,7 @@
         '',
         'void main() {',
         '    vec3 color = u_modelColor;',
-        '    vec3 lit = mix(color, vec3(0), abs(v_position.z) / 6.0);',
+        '    vec3 lit = mix(color, vec3(0), abs(v_position.z) / 3.0);',
         '    gl_FragColor = vec4(lit, 1.0);',
         '}',
     ]);
@@ -77,7 +77,7 @@
         var N = 16;
         var RADIUS = 10;
         var EXTRUDE_LENGTH = .5;
-        var TAPER_LENGTH = 6;
+        var TAPER_LENGTH = 3;
 
         // Our construction for the platform has a set of N "surface"
         // vertices, which are then extruded below by EXTRUDE_LENGTH, connected
