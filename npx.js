@@ -481,7 +481,6 @@
             var mz = Math.sin(theta) * rad;
             scene.setCamera([mx, my, mz], [0, 0, 0]);
         }
-        setCameraFromTP(0.375, -0.25);
 
         var mouseX = 0, mouseY = 0;
         function update() {
@@ -490,6 +489,11 @@
             var cy = clamp((mouseY - cbr.top) / cbr.height, 0, 1);
             var rx = cx * 2 - 1;
             var ry = -(cy * 2 - 1);
+
+            var mx = ((mouseX / window.innerWidth) - 0.5) * -Math.PI;
+            var my = ((mouseY / window.innerHeight) - 0.2) * Math.PI/2;
+            setCameraFromTP(my, mx);
+
             scene.castRay(rx, ry);
             scene.render();
         }
