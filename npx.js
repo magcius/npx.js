@@ -21,6 +21,7 @@
 
     var VERT_SHADER_SOURCE = M([
         'uniform mat4 u_modelView;',
+        'uniform mat4 u_localMatrix;',
         'uniform mat4 u_projection;',
         'attribute vec3 a_position;',
         'varying vec3 v_position;',
@@ -28,7 +29,7 @@
         'void main() {',
         '    v_position = a_position;',
         '',
-        '    gl_Position = u_projection * u_modelView * vec4(a_position, 1.0);',
+        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
         '}',
     ]);
 
@@ -56,6 +57,7 @@
 
         prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
         prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
+        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
         prog.positionLocation = gl.getAttribLocation(prog, "a_position");
         prog.modelColorLocation = gl.getUniformLocation(prog, "u_modelColor");
 
@@ -67,6 +69,9 @@
     var GREEN  = [0.6, 0.8, 0.2];
     var PURPLE = [0.4, 0.2, 0.8];
     var PINK   = [1.0, 0.2, 0.8];
+
+    var VERT_N_ITEMS = 3;
+    var VERT_N_BYTES = VERT_N_ITEMS * Float32Array.BYTES_PER_ELEMENT;
 
     function createPlatform(gl) {
         var N = 16;
@@ -81,9 +86,6 @@
         // We also have two central points, one to form the top of the
         // platform, and one for the bottom of the platform. So, two sets
         // of N vertices, and two centers brings us to N+N+2.
-
-        var VERT_N_ITEMS = 3;
-        var VERT_N_BYTES = VERT_N_ITEMS * Float32Array.BYTES_PER_ELEMENT;
 
         var SURFACE_N_VERTS = (N + 1);
 
@@ -103,6 +105,7 @@
         var indxs = new Uint8Array(SURFACE_N_INDXS * 2 + WALL_N_INDXS * N);
 
         var model = {};
+        model.localMatrix = mat4.create();
         model.primitives = [];
 
         // Build the "surface".
@@ -215,6 +218,137 @@
         return model;
     }
 
+    function createBridge(gl) {
+        var WIDTH = 20;
+        var LENGTH = 6;
+        var HEIGHT = .7;
+        var hw = WIDTH/2, hl = LENGTH/2;
+
+        var model = {};
+        model.localMatrix = mat4.create();
+
+        var SURFACE_N_VERTS = 4;
+
+        var verts = new Float32Array(VERT_N_ITEMS * (SURFACE_N_VERTS * 2));
+        var indxs = new Uint8Array(4 * 6);
+
+        verts[0]  = -hw;
+        verts[1]  = -hl;
+        verts[3]  =  hw;
+        verts[4]  = -hl;
+        verts[6]  = -hw;
+        verts[7]  =  hl;
+        verts[9]  =  hw;
+        verts[10] =  hl;
+
+        verts[12+0]  = -hw;
+        verts[12+1]  = -hl;
+        verts[12+2]  = -HEIGHT;
+        verts[12+3]  =  hw;
+        verts[12+4]  = -hl;
+        verts[12+5]  = -HEIGHT;
+        verts[12+6]  = -hw;
+        verts[12+7]  =  hl;
+        verts[12+8]  = -HEIGHT;
+        verts[12+9]  =  hw;
+        verts[12+10] =  hl;
+        verts[12+11]  = -HEIGHT;
+
+        model.primitives = [];
+        var prim;
+
+        // top surface
+        indxs[0] = 0;
+        indxs[1] = 1;
+        indxs[2] = 2;
+        indxs[3] = 3;
+
+        prim = {};
+        prim.color = GREEN;
+        prim.start = 0;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        // bottom surface
+        indxs[4] = 4;
+        indxs[5] = 5;
+        indxs[6] = 6;
+        indxs[7] = 7;
+
+        prim = {};
+        prim.color = PURPLE;
+        prim.start = 4;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        // walls
+        indxs[8]  = 0;
+        indxs[9]  = 1;
+        indxs[10] = 4;
+        indxs[11] = 5;
+
+        prim = {};
+        prim.color = PINK;
+        prim.start = 8;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        indxs[12] = 0;
+        indxs[13] = 2;
+        indxs[14] = 4;
+        indxs[15] = 6;
+
+        prim = {};
+        prim.color = PINK;
+        prim.start = 12;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        indxs[16] = 1;
+        indxs[17] = 3;
+        indxs[18] = 5;
+        indxs[19] = 7;
+
+        prim = {};
+        prim.color = PINK;
+        prim.start = 16;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        indxs[20] = 2;
+        indxs[21] = 3;
+        indxs[22] = 6;
+        indxs[23] = 7;
+
+        prim = {};
+        prim.color = PINK;
+        prim.start = 20;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+        var elementBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indxs, gl.STATIC_DRAW);
+
+        model.buffer = buffer;
+        model.elementBuffer = elementBuffer;
+
+        var prog = createProgram(gl);
+        model.program = prog;
+
+        return model;
+    }
+
     function createScene(gl) {
         var modelView = mat4.create();
 
@@ -249,6 +383,7 @@
 
             gl.uniformMatrix4fv(prog.projectionLocation, false, projection);
             gl.uniformMatrix4fv(prog.modelViewLocation, false, modelView);
+            gl.uniformMatrix4fv(prog.localMatrixLocation, false, model.localMatrix);
             gl.vertexAttribPointer(prog.positionLocation, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(prog.positionLocation);
             model.primitives.forEach(renderPrimitive);
@@ -282,8 +417,12 @@
 
         var scene = createScene(gl);
 
-        var tiles = createPlatform(gl);
-        scene.attachModel(tiles);
+        var platform = createPlatform(gl);
+        scene.attachModel(platform);
+
+        var bridge = createBridge(gl);
+        mat4.translate(bridge.localMatrix, bridge.localMatrix, [0, 0, 2]);
+        scene.attachModel(bridge);
 
         var mouseX = 0, mouseY = 0;
         function update() {
