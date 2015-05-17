@@ -486,6 +486,8 @@
             if (y < -1 || y > 1) return null;
 
             gl.enable(gl.DEPTH_TEST);
+            gl.enable(gl.CULL_FACE);
+            gl.cullFace(gl.FRONT);
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             setProgram(pickProgram);
@@ -498,6 +500,7 @@
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
                 renderModelEpilogue(model);
             });
+            gl.disable(gl.CULL_FACE);
 
             var pixel = new Uint8Array(4);
 
