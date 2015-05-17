@@ -475,7 +475,8 @@
             gl.clearColor(0.2, 0.2, 0.4, 1);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             models.forEach(renderModel);
-            renderModel(rayCastModel);
+            if (wasPicked)
+                renderModel(rayCastModel);
         }
 
         var rayCastModel = createBox(gl, 1, 1, 1);
@@ -529,11 +530,16 @@
             vec3.normalize(out, rayWorld);
         }
 
+        var wasPicked = false;
+
         function castRay(x, y) {
+            wasPicked = false;
+
             var model = pickSurface(x, y);
             if (!model)
                 return;
 
+            wasPicked = true;
             var surface = model.surface;
             surface.picked = true;
 
