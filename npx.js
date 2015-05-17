@@ -184,8 +184,6 @@
             if (bottomVert2 >= (SURFACE_N_VERTS * 2))
                 bottomVert2 = SURFACE_N_VERTS + 1;
 
-            console.log(i, topVert, topVert2, bottomVert, bottomVert2);
-
             var startIndx = (SURFACE_N_INDXS * 2) + (WALL_N_INDXS*i);
             indxs[startIndx+0] = topVert;
             indxs[startIndx+1] = topVert2;
@@ -199,8 +197,6 @@
             prim.drawType = gl.TRIANGLE_STRIP;
             model.primitives.push(prim);
         }
-
-        console.log(indxs);
 
         var buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
