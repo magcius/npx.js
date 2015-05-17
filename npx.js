@@ -548,9 +548,13 @@
             var pos = cameraPos;
 
             var surfacePlaneN = surface.normal;
+            var surfacePlaneV = vec3.clone(surface.origin);
+            vec3.transformMat4(surfacePlaneV, surfacePlaneV, model.localMatrix);
 
             var denom = vec3.dot(direction, surfacePlaneN);
-            var t = -vec3.dot(pos, surfacePlaneN) / denom;
+            var p = vec3.create();
+            vec3.subtract(p, pos, surfacePlaneV);
+            var t = -vec3.dot(p, surfacePlaneN) / denom;
             var out = vec3.create();
             vec3.scale(out, direction, t);
             vec3.add(out, pos, out);
