@@ -636,10 +636,12 @@
                 P += 0.05;
             if (isKeyDown('S'))
                 P -= 0.05;
+
             setCameraFromTP(T, P);
 
             scene.castRay(rx, ry);
-            scene.render();
+            if (!isKeyDown('X'))
+                scene.render();
 
             requestAnimationFrame(update);
         }
