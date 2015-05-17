@@ -26,9 +26,10 @@
         'attribute vec3 a_position;',
         '',
         'varying float v_lightIntensity;',
+        'uniform float u_modelHeight;',
         '',
         'void main() {',
-        '    v_lightIntensity = abs(a_position.z / 3.0);',
+        '    v_lightIntensity = abs(a_position.z / u_modelHeight);',
         '',
         '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
         '}',
@@ -61,6 +62,7 @@
         prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
         prog.positionLocation = gl.getAttribLocation(prog, "a_position");
         prog.modelColorLocation = gl.getUniformLocation(prog, "u_modelColor");
+        prog.modelHeightLocation = gl.getUniformLocation(prog, "u_modelHeight");
 
         return prog;
     }
@@ -106,6 +108,7 @@
         var indxs = new Uint8Array(SURFACE_N_INDXS * 2 + WALL_N_INDXS * N);
 
         var model = {};
+        model.height = TAPER_LENGTH + EXTRUDE_LENGTH;
         model.localMatrix = mat4.create();
         model.primitives = [];
 
@@ -226,6 +229,7 @@
         var hw = WIDTH/2, hl = LENGTH/2;
 
         var model = {};
+        model.height = HEIGHT * 2;
         model.localMatrix = mat4.create();
 
         var SURFACE_N_VERTS = 4;
@@ -368,12 +372,8 @@
                 gl.useProgram(prog);
             }
 
-            function setColor(color) {
-                gl.uniform3fv(prog.modelColorLocation, color);
-            }
-
             function renderPrimitive(prim, i) {
-                setColor(prim.color);
+                gl.uniform3fv(prog.modelColorLocation, prim.color);
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
             }
 
@@ -382,6 +382,7 @@
 
             setProgram(model.program);
 
+            gl.uniform1f(prog.modelHeightLocation, model.height);
             gl.uniformMatrix4fv(prog.projectionLocation, false, projection);
             gl.uniformMatrix4fv(prog.modelViewLocation, false, modelView);
             gl.uniformMatrix4fv(prog.localMatrixLocation, false, model.localMatrix);
