@@ -190,7 +190,7 @@
         model.primitives.push(prim);
 
         model.surface.prim = prim;
-        model.surface.normal = vec3.clone([0, 0, 1]);
+        model.surface.normal = vec3.clone([0, 1, 0]);
         model.surface.origin = vec3.clone([0, 0, 0]);
 
         // Now extrude down and build the bottom surface cap.
@@ -331,7 +331,7 @@
 
         model.surface = {};
         model.surface.prim = prim;
-        model.surface.normal = vec3.clone([0, 0, 1]);
+        model.surface.normal = vec3.clone([0, 1, 0]);
         model.surface.origin = vec3.clone([0, 0, 0]);
 
         // bottom surface
@@ -547,7 +547,6 @@
             mat4.identity(rayCastModel.localMatrix);
             // mat4.multiply(rayCastModel.localMatrix, rayCastModel.localMatrix, model.localMatrix);
             // XXX: hack it so that the model is centered around the cursor
-            out[2] += 0.5;
             mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, out);
         }
 
@@ -582,6 +581,7 @@
             var mz = Math.sin(theta) * rad;
             scene.setCamera([mx, my, mz], [0, 0, 0]);
         }
+        setCameraFromTP(0.35, 0.10);
 
         var mouseX = 0, mouseY = 0;
         function update() {
@@ -590,10 +590,6 @@
             var cy = clamp((mouseY - cbr.top) / cbr.height, 0, 1);
             var rx = cx * 2 - 1;
             var ry = -(cy * 2 - 1);
-
-            var mx = ((mouseX / window.innerWidth) - 0.5) * -Math.PI;
-            var my = ((mouseY / window.innerHeight) - 0.2) * Math.PI/2;
-            setCameraFromTP(mx, my);
 
             scene.castRay(rx, ry);
             scene.render();
