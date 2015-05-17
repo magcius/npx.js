@@ -445,15 +445,19 @@
         function renderModelEpilogue(model) {
             gl.disableVertexAttribArray(prog.positionLocation);
         }
-        function renderPrimitive(prim, i) {
-            gl.uniform3fv(prog.modelColorLocation, prim.color);
-            gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-        }
 
         function renderModel(model) {
             setProgram(model.program);
             renderModelPrologue(model);
-            model.primitives.forEach(renderPrimitive);
+            model.primitives.forEach(function(prim) {
+                var color = prim.color;
+                if (prim == model.surface.prim && model.surface.picked) {
+                    color = [0.75, 0.8, 0];
+                    model.surface.picked = false;
+                }
+                gl.uniform3fv(prog.modelColorLocation, color);
+                gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
+            });
             renderModelEpilogue(model);
         }
 
@@ -531,6 +535,7 @@
                 return;
 
             var surface = model.surface;
+            surface.picked = true;
 
             var direction = vec3.create();
             unprojRay(direction, x, y);
@@ -547,6 +552,7 @@
             mat4.identity(rayCastModel.localMatrix);
             // mat4.multiply(rayCastModel.localMatrix, rayCastModel.localMatrix, model.localMatrix);
             // XXX: hack it so that the model is centered around the cursor
+            out[1] += 0.5;
             mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, out);
         }
 
@@ -610,9 +616,13 @@
             var ry = -(cy * 2 - 1);
 
             if (isKeyDown('A'))
+                T += 0.05;
             if (isKeyDown('D'))
+                T -= 0.05;
             if (isKeyDown('W'))
+                P += 0.05;
             if (isKeyDown('S'))
+                P -= 0.05;
             setCameraFromTP(T, P);
 
             scene.castRay(rx, ry);
