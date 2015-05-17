@@ -506,7 +506,7 @@
         }
 
         function unprojRay(out, x, y) {
-            var rayClip = vec4.clone([x, -1, y, 1]);
+            var rayClip = vec4.clone([x, y, -1, 1]);
             var rayEye = vec4.create();
             var projInv = mat4.create();
             mat4.invert(projInv, projection);
