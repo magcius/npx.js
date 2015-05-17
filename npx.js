@@ -29,7 +29,7 @@
         'uniform float u_modelHeight;',
         '',
         'void main() {',
-        '    v_lightIntensity = abs(a_position.z / u_modelHeight);',
+        '    v_lightIntensity = abs(a_position.y / u_modelHeight);',
         '',
         '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
         '}',
@@ -173,8 +173,8 @@
             var y = Math.sin(theta) * RADIUS;
             var x = Math.cos(theta) * RADIUS;
             surfaceVerts[i * VERT_N_ITEMS + 0] = x;
-            surfaceVerts[i * VERT_N_ITEMS + 1] = y;
-            surfaceVerts[i * VERT_N_ITEMS + 2] = 0;
+            surfaceVerts[i * VERT_N_ITEMS + 1] = 0;
+            surfaceVerts[i * VERT_N_ITEMS + 2] = y;
 
             indxs[i+1] = i+1;
         }
@@ -196,8 +196,8 @@
         // Now extrude down and build the bottom surface cap.
         var vert = new Float32Array(verts.buffer, (SURFACE_N_VERTS) * VERT_N_BYTES, VERT_N_ITEMS * 1);
         vert[0] = 0;
-        vert[1] = 0;
-        vert[2] = -EXTRUDE_LENGTH - TAPER_LENGTH;
+        vert[1] = -EXTRUDE_LENGTH - TAPER_LENGTH;
+        vert[2] = 0;
 
         indxs[SURFACE_N_INDXS] = N+1;
 
@@ -207,8 +207,8 @@
             var y = Math.sin(theta) * RADIUS;
             var x = Math.cos(theta) * RADIUS;
             surfaceVerts[i * VERT_N_ITEMS + 0] = x;
-            surfaceVerts[i * VERT_N_ITEMS + 1] = y;
-            surfaceVerts[i * VERT_N_ITEMS + 2] = -EXTRUDE_LENGTH;
+            surfaceVerts[i * VERT_N_ITEMS + 1] = -EXTRUDE_LENGTH;
+            surfaceVerts[i * VERT_N_ITEMS + 2] = y;
 
             indxs[SURFACE_N_INDXS + i+1] = (N+2) + i;
         }
@@ -288,26 +288,30 @@
         var indxs = new Uint8Array(4 * 6);
 
         verts[0]  = -hw;
-        verts[1]  = -hl;
+        verts[1]  = 0;
+        verts[2]  = -hl;
         verts[3]  =  hw;
-        verts[4]  = -hl;
+        verts[4]  = 0;
+        verts[5]  = -hl;
         verts[6]  = -hw;
-        verts[7]  =  hl;
+        verts[7]  = 0;
+        verts[8]  =  hl;
         verts[9]  =  hw;
-        verts[10] =  hl;
+        verts[10]  = 0;
+        verts[11] =  hl;
 
         verts[12+0]  = -hw;
-        verts[12+1]  = -hl;
-        verts[12+2]  = -HEIGHT;
+        verts[12+1]  = -HEIGHT;
+        verts[12+2]  = -hl;
         verts[12+3]  =  hw;
-        verts[12+4]  = -hl;
-        verts[12+5]  = -HEIGHT;
+        verts[12+4]  = -HEIGHT;
+        verts[12+5]  = -hl;
         verts[12+6]  = -hw;
-        verts[12+7]  =  hl;
-        verts[12+8]  = -HEIGHT;
+        verts[12+7]  = -HEIGHT;
+        verts[12+8]  =  hl;
         verts[12+9]  =  hw;
-        verts[12+10] =  hl;
-        verts[12+11]  = -HEIGHT;
+        verts[12+10] =  -HEIGHT;
+        verts[12+11] =  hl;
 
         model.primitives = [];
         var prim;
@@ -460,7 +464,7 @@
         function setCamera(cameraPos_, cameraLook_) {
             vec3.copy(cameraPos, cameraPos_);
             vec3.copy(cameraLook, cameraLook_);
-            mat4.lookAt(modelView, cameraPos, cameraLook, [0, 0, 1]);
+            mat4.lookAt(modelView, cameraPos, cameraLook, [0, 1, 0]);
         }
         function render() {
             gl.enable(gl.DEPTH_TEST);
@@ -567,7 +571,7 @@
         scene.attachModel(platform);
 
         var bridge = createBox(gl, 20, 6, .2);
-        mat4.translate(bridge.localMatrix, bridge.localMatrix, [0, 0, 2]);
+        mat4.translate(bridge.localMatrix, bridge.localMatrix, [0, 2, 0]);
         scene.attachModel(bridge);
 
         function setCameraFromTP(theta, phi) {
@@ -589,7 +593,7 @@
 
             var mx = ((mouseX / window.innerWidth) - 0.5) * -Math.PI;
             var my = ((mouseY / window.innerHeight) - 0.2) * Math.PI/2;
-            setCameraFromTP(my, mx);
+            setCameraFromTP(mx, my);
 
             scene.castRay(rx, ry);
             scene.render();
