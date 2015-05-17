@@ -67,6 +67,45 @@
         return prog;
     }
 
+    var PICK_VERT_SHADER_SOURCE = M([
+        'uniform mat4 u_modelView;',
+        'uniform mat4 u_localMatrix;',
+        'uniform mat4 u_projection;',
+        'attribute vec3 a_position;',
+        '',
+        'void main() {',
+        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
+        '}',
+    ]);
+
+    var PICK_FRAG_SHADER_SOURCE = M([
+        'precision mediump float;',
+        '',
+        'uniform vec4 u_pickId;',
+        '',
+        'void main() {',
+        '    gl_FragColor = u_pickId;',
+        '}',
+    ]);
+
+    function createPickProgram(gl) {
+        var vertShader = compileShader(gl, PICK_VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
+        var fragShader = compileShader(gl, PICK_FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
+
+        var prog = gl.createProgram();
+        gl.attachShader(prog, vertShader);
+        gl.attachShader(prog, fragShader);
+        gl.linkProgram(prog);
+
+        prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
+        prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
+        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
+        prog.positionLocation = gl.getAttribLocation(prog, "a_position");
+        prog.pickIdLocation = gl.getUniformLocation(prog, "u_pickId");
+
+        return prog;
+    }
+
     var TAU = Math.PI * 2;
 
     function clamp(v, min, max) {
@@ -112,9 +151,11 @@
         var indxs = new Uint8Array(SURFACE_N_INDXS * 2 + WALL_N_INDXS * N);
 
         var model = {};
+        model.name = 'platform';
         model.height = TAPER_LENGTH + EXTRUDE_LENGTH;
         model.localMatrix = mat4.create();
         model.primitives = [];
+        model.surface = {};
 
         // Build the "surface".
 
@@ -147,6 +188,10 @@
         prim.count = (N + 2);
         prim.drawType = gl.TRIANGLE_FAN;
         model.primitives.push(prim);
+
+        model.surface.prim = prim;
+        model.surface.normal = vec3.clone([0, 0, 1]);
+        model.surface.origin = vec3.clone([0, 0, 0]);
 
         // Now extrude down and build the bottom surface cap.
         var vert = new Float32Array(verts.buffer, (SURFACE_N_VERTS) * VERT_N_BYTES, VERT_N_ITEMS * 1);
@@ -233,6 +278,7 @@
         var hw = WIDTH/2, hl = LENGTH/2;
 
         var model = {};
+        model.name = 'box';
         model.height = HEIGHT * 2;
         model.localMatrix = mat4.create();
 
@@ -278,6 +324,11 @@
         prim.count = 4;
         prim.drawType = gl.TRIANGLE_STRIP;
         model.primitives.push(prim);
+
+        model.surface = {};
+        model.surface.prim = prim;
+        model.surface.normal = vec3.clone([0, 0, 1]);
+        model.surface.origin = vec3.clone([0, 0, 0]);
 
         // bottom surface
         indxs[4] = 4;
@@ -368,34 +419,38 @@
         mat4.perspective(projection, Math.PI / 4, gl.viewportWidth / gl.viewportHeight, 0.2, 256);
 
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clearColor(0.2, 0.2, 0.4, 1);
-        gl.enable(gl.DEPTH_TEST);
 
-        function renderModel(model) {
-            var prog = null;
-            function setProgram(program) {
-                prog = program;
-                gl.useProgram(prog);
-            }
+        var pickProgram = createPickProgram(gl);
 
-            function renderPrimitive(prim, i) {
-                gl.uniform3fv(prog.modelColorLocation, prim.color);
-                gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-            }
+        var prog = null;
+        function setProgram(program) {
+            prog = program;
+            gl.useProgram(prog);
+        }
 
+        function renderModelPrologue(model) {
             gl.bindBuffer(gl.ARRAY_BUFFER, model.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.elementBuffer);
-
-            setProgram(model.program);
-
             gl.uniform1f(prog.modelHeightLocation, model.height);
             gl.uniformMatrix4fv(prog.projectionLocation, false, projection);
             gl.uniformMatrix4fv(prog.modelViewLocation, false, modelView);
             gl.uniformMatrix4fv(prog.localMatrixLocation, false, model.localMatrix);
             gl.vertexAttribPointer(prog.positionLocation, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(prog.positionLocation);
-            model.primitives.forEach(renderPrimitive);
+        }
+        function renderModelEpilogue(model) {
             gl.disableVertexAttribArray(prog.positionLocation);
+        }
+        function renderPrimitive(prim, i) {
+            gl.uniform3fv(prog.modelColorLocation, prim.color);
+            gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
+        }
+
+        function renderModel(model) {
+            setProgram(model.program);
+            renderModelPrologue(model);
+            model.primitives.forEach(renderPrimitive);
+            renderModelEpilogue(model);
         }
 
         var models = [];
@@ -409,6 +464,7 @@
         }
         function render() {
             gl.enable(gl.DEPTH_TEST);
+            gl.clearColor(0.2, 0.2, 0.4, 1);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             models.forEach(renderModel);
             renderModel(rayCastModel);
@@ -416,8 +472,41 @@
 
         var rayCastModel = createBox(gl, 1, 1, 1);
 
+        function pickSurface(x, y) {
+            if (x < -1 || x > 1) return null;
+            if (y < -1 || y > 1) return null;
+
+            gl.enable(gl.DEPTH_TEST);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            setProgram(pickProgram);
+            models.forEach(function(model, i) {
+                var color = new Float32Array([0, 0, 0, 1.0]);
+                color[0] = i / 255.0;
+                gl.uniform4fv(prog.pickIdLocation, color);
+                renderModelPrologue(model);
+                var prim = model.surface.prim;
+                gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
+                renderModelEpilogue(model);
+            });
+
+            var pixel = new Uint8Array(4);
+
+            // xxx: pass through viewport mouse rather than clip space?
+            var viewport = gl.getParameter(gl.VIEWPORT);
+            var px = ((x+1)/2 * viewport[2]) | 0;
+            var py = ((y+1)/2 * viewport[3]) | 0;
+            gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+            // if we aren't opaque, we didn't hit anything
+            if (pixel[3] == 0)
+                return null;
+
+            var i = pixel[0];
+            return models[i];
+        }
+
         function unprojRay(out, x, y) {
-            var rayClip = vec4.clone([x, y, -1, 1]);
+            var rayClip = vec4.clone([x, -1, y, 1]);
             var rayEye = vec4.create();
             var projInv = mat4.create();
             mat4.invert(projInv, projection);
@@ -433,12 +522,17 @@
         }
 
         function castRay(x, y) {
+            var model = pickSurface(x, y);
+            if (!model)
+                return;
+
+            var surface = model.surface;
+
             var direction = vec3.create();
             unprojRay(direction, x, y);
             var pos = cameraPos;
 
-            var surfacePlaneV = [0, 0, 0];
-            var surfacePlaneN = [0, 0, 1];
+            var surfacePlaneN = surface.normal;
 
             var denom = vec3.dot(direction, surfacePlaneN);
             var t = -vec3.dot(pos, surfacePlaneN) / denom;
@@ -447,6 +541,9 @@
             vec3.add(out, pos, out);
 
             mat4.identity(rayCastModel.localMatrix);
+            // mat4.multiply(rayCastModel.localMatrix, rayCastModel.localMatrix, model.localMatrix);
+            // XXX: hack it so that the model is centered around the cursor
+            out[2] += 0.5;
             mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, out);
         }
 
