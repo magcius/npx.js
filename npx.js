@@ -359,6 +359,9 @@
     }
 
     function createScene(gl) {
+        var cameraPos = vec3.create();
+        var cameraLook = vec3.create();
+
         var modelView = mat4.create();
 
         var projection = mat4.create();
@@ -399,8 +402,10 @@
         function attachModel(model) {
             models.push(model);
         }
-        function setCamera(matrix) {
-            mat4.copy(modelView, matrix);
+        function setCamera(cameraPos_, cameraLook_) {
+            vec3.copy(cameraPos, cameraPos_);
+            vec3.copy(cameraLook, cameraLook_);
+            mat4.lookAt(modelView, cameraPos, cameraLook, [0, 0, 1]);
         }
         function render() {
             gl.enable(gl.DEPTH_TEST);
@@ -412,22 +417,38 @@
 
         var rayCastModel = createBox(gl, 1, 1, 1);
 
-        function castRay(x, y) {
+        function unprojRay(out, x, y) {
             var rayClip = vec4.clone([x, y, -1, 1]);
             var rayEye = vec4.create();
             var projInv = mat4.create();
             mat4.invert(projInv, projection);
             vec4.transformMat4(rayEye, rayClip, projInv);
             rayEye = vec4.clone([rayEye[0], rayEye[1], -1, 0]);
+
             var rayWorld = vec4.create();
             var mvInv = mat4.create();
             mat4.invert(mvInv, modelView);
             vec4.transformMat4(rayWorld, rayEye, mvInv);
             rayWorld = vec3.clone([rayWorld[0], rayWorld[1], rayWorld[2]]);
-            vec4.normalize(rayWorld, rayWorld);
+            vec3.normalize(out, rayWorld);
+        }
+
+        function castRay(x, y) {
+            var direction = vec3.create();
+            unprojRay(direction, x, y);
+            var pos = cameraPos;
+
+            var surfacePlaneV = [0, 0, 0];
+            var surfacePlaneN = [0, 0, 1];
+
+            var denom = vec3.dot(direction, surfacePlaneN);
+            var t = -vec3.dot(pos, surfacePlaneN) / denom;
+            var out = vec3.create();
+            vec3.scale(out, direction, t);
+            vec3.add(out, pos, out);
 
             mat4.identity(rayCastModel.localMatrix);
-            mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, rayWorld);
+            mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, out);
         }
 
         var scene = {};
@@ -459,8 +480,7 @@
             var mx = Math.cos(theta) * Math.cos(phi) * rad;
             var my = Math.cos(theta) * Math.sin(phi) * rad;
             var mz = Math.sin(theta) * rad;
-            mat4.lookAt(camera, [mx, my, mz], [0, 0, 0], [0, 0, 1]);
-            scene.setCamera(camera);
+            scene.setCamera([mx, my, mz], [0, 0, 0]);
         }
         setCameraFromTP(0.375, -0.25);
 
@@ -470,7 +490,7 @@
             var cx = clamp((mouseX - cbr.left) / cbr.width, 0, 1);
             var cy = clamp((mouseY - cbr.top) / cbr.height, 0, 1);
             var rx = cx * 2 - 1;
-            var ry = cy * -2 - 1;
+            var ry = -(cy * 2 - 1);
             scene.castRay(rx, ry);
             scene.render();
         }
