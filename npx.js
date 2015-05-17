@@ -69,6 +69,10 @@
 
     var TAU = Math.PI * 2;
 
+    function clamp(v, min, max) {
+        return Math.max(Math.min(v, max), min);
+    }
+
     var GREEN  = [0.6, 0.8, 0.2];
     var PURPLE = [0.4, 0.2, 0.8];
     var PINK   = [1.0, 0.2, 0.8];
@@ -222,10 +226,10 @@
         return model;
     }
 
-    function createBridge(gl) {
-        var WIDTH = 20;
-        var LENGTH = 6;
-        var HEIGHT = .7;
+    function createBox(gl, w, l, h) {
+        var WIDTH = w;
+        var LENGTH = l;
+        var HEIGHT = h;
         var hw = WIDTH/2, hl = LENGTH/2;
 
         var model = {};
@@ -362,7 +366,6 @@
 
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clearColor(0.2, 0.2, 0.4, 1);
-
         gl.enable(gl.DEPTH_TEST);
 
         function renderModel(model) {
@@ -400,13 +403,37 @@
             mat4.copy(modelView, matrix);
         }
         function render() {
+            gl.enable(gl.DEPTH_TEST);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             models.forEach(renderModel);
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            renderModel(rayCastModel);
+        }
+
+        var rayCastModel = createBox(gl, 1, 1, 1);
+
+        function castRay(x, y) {
+            var rayClip = vec4.clone([x, y, -1, 1]);
+            var rayEye = vec4.create();
+            var projInv = mat4.create();
+            mat4.invert(projInv, projection);
+            vec4.transformMat4(rayEye, rayClip, projInv);
+            rayEye = vec4.clone([rayEye[0], rayEye[1], -1, 0]);
+            var rayWorld = vec4.create();
+            var mvInv = mat4.create();
+            mat4.invert(mvInv, modelView);
+            vec4.transformMat4(rayWorld, rayEye, mvInv);
+            rayWorld = vec3.clone([rayWorld[0], rayWorld[1], rayWorld[2]]);
+            vec4.normalize(rayWorld, rayWorld);
+
+            mat4.identity(rayCastModel.localMatrix);
+            mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, rayWorld);
         }
 
         var scene = {};
         scene.attachModel = attachModel;
         scene.setCamera = setCamera;
+        scene.castRay = castRay;
         scene.render = render;
         return scene;
     }
@@ -422,21 +449,29 @@
         var platform = createPlatform(gl);
         scene.attachModel(platform);
 
-        var bridge = createBridge(gl);
+        var bridge = createBox(gl, 20, 6, .2);
         mat4.translate(bridge.localMatrix, bridge.localMatrix, [0, 0, 2]);
         scene.attachModel(bridge);
 
-        var mouseX = 0, mouseY = 0;
-        function update() {
+        function setCameraFromTP(theta, phi) {
             var camera = mat4.create();
-            var phi = (mouseX / window.innerWidth - 0.5) * -Math.PI;
-            var theta = (mouseY / window.innerHeight - 0.5) * Math.PI;
             var rad = 25;
             var mx = Math.cos(theta) * Math.cos(phi) * rad;
             var my = Math.cos(theta) * Math.sin(phi) * rad;
             var mz = Math.sin(theta) * rad;
             mat4.lookAt(camera, [mx, my, mz], [0, 0, 0], [0, 0, 1]);
             scene.setCamera(camera);
+        }
+        setCameraFromTP(0.375, -0.25);
+
+        var mouseX = 0, mouseY = 0;
+        function update() {
+            var cbr = canvas.getBoundingClientRect();
+            var cx = clamp((mouseX - cbr.x) / cbr.width, 0, 1);
+            var cy = clamp((mouseY - cbr.y) / cbr.height, 0, 1);
+            var rx = cx * 2 - 1;
+            var ry = cy * -2 - 1;
+            scene.castRay(rx, ry);
             scene.render();
         }
 
