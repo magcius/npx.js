@@ -126,9 +126,10 @@
         'varying vec3 v_position;',
         '',
         'void main() {',
-        '    vec3 color = vec3(1.0, 0.0, 0.0);',
+        '    vec3 color = vec3(1.0, 1.0, 1.0);',
         '    float dist = distance(v_position.xz, vec2(0.0, 0.0));',
-        '    gl_FragColor = vec4(color, 1.0 - dist);',
+        '    float a = 0.5 - abs(dist - 0.5);',
+        '    gl_FragColor = vec4(color, a);',
         '}',
     ]);
 
