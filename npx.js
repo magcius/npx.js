@@ -1,72 +1,12 @@
+// Contains the main rendering logic.
+
 (function(exports) {
     "use strict";
 
-    function compileShader(gl, str, type) {
-        var shader = gl.createShader(type);
+    // A dumb hack to have "multiline strings".
+    function M(X) { return X.join('\n'); }
 
-        gl.shaderSource(shader, str);
-        gl.compileShader(shader);
-
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(shader));
-            return null;
-        }
-
-        return shader;
-    }
-
-    function M(X) {
-        return X.join('\n');
-    }
-
-    var VERT_SHADER_SOURCE = M([
-        'uniform mat4 u_modelView;',
-        'uniform mat4 u_localMatrix;',
-        'uniform mat4 u_projection;',
-        'attribute vec3 a_position;',
-        '',
-        'varying float v_lightIntensity;',
-        'uniform float u_modelHeight;',
-        '',
-        'void main() {',
-        '    v_lightIntensity = abs(a_position.y / u_modelHeight);',
-        '',
-        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
-        '}',
-    ]);
-
-    var FRAG_SHADER_SOURCE = M([
-        'precision mediump float;',
-        '',
-        'uniform vec3 u_modelColor;',
-        'varying float v_lightIntensity;',
-        '',
-        'void main() {',
-        '    vec3 color = u_modelColor;',
-        '    vec3 lit = mix(color, vec3(0), v_lightIntensity);',
-        '    gl_FragColor = vec4(lit, 1.0);',
-        '}',
-    ]);
-
-    function createProgram(gl) {
-        var vertShader = compileShader(gl, VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
-        var fragShader = compileShader(gl, FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
-
-        var prog = gl.createProgram();
-        gl.attachShader(prog, vertShader);
-        gl.attachShader(prog, fragShader);
-        gl.linkProgram(prog);
-
-        prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
-        prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
-        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
-        prog.positionLocation = gl.getAttribLocation(prog, "a_position");
-        prog.modelColorLocation = gl.getUniformLocation(prog, "u_modelColor");
-        prog.modelHeightLocation = gl.getUniformLocation(prog, "u_modelHeight");
-
-        return prog;
-    }
-
+    // A simply coarse picking program for coarse collision detection.
     var PICK_VERT_SHADER_SOURCE = M([
         'uniform mat4 u_modelView;',
         'uniform mat4 u_localMatrix;',
@@ -89,8 +29,8 @@
     ]);
 
     function createPickProgram(gl) {
-        var vertShader = compileShader(gl, PICK_VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
-        var fragShader = compileShader(gl, PICK_FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
+        var vertShader = GLUtils.compileShader(gl, PICK_VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
+        var fragShader = GLUtils.compileShader(gl, PICK_FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
 
         var prog = gl.createProgram();
         gl.attachShader(prog, vertShader);
@@ -106,56 +46,9 @@
         return prog;
     }
 
-    var CONTACT_VERT_SHADER_SOURCE = M([
-        'uniform mat4 u_modelView;',
-        'uniform mat4 u_localMatrix;',
-        'uniform mat4 u_projection;',
-        'attribute vec3 a_position;',
-        'varying vec3 v_position;',
-        '',
-        'void main() {',
-        '    v_position = a_position;',
-        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
-        '}',
-    ]);
-
-    var CONTACT_FRAG_SHADER_SOURCE = M([
-        'precision mediump float;',
-        '',
-        'uniform vec4 u_pickId;',
-        'varying vec3 v_position;',
-        '',
-        'void main() {',
-        '    vec3 color = vec3(1.0, 1.0, 1.0);',
-        '    float dist = distance(v_position.xz, vec2(0.0, 0.0));',
-        '    float a = 0.5 - abs(dist - 0.5);',
-        '    gl_FragColor = vec4(color, a);',
-        '}',
-    ]);
-
-    function createContactProgram(gl) {
-        var vertShader = compileShader(gl, CONTACT_VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
-        var fragShader = compileShader(gl, CONTACT_FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
-
-        var prog = gl.createProgram();
-        gl.attachShader(prog, vertShader);
-        gl.attachShader(prog, fragShader);
-        gl.linkProgram(prog);
-
-        prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
-        prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
-        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
-        prog.positionLocation = gl.getAttribLocation(prog, "a_position");
-
-        return prog;
-    }
-
-    function clamp(v, min, max) {
-        return Math.max(Math.min(v, max), min);
-    }
-
+    // The main renderer.
     var Scene = new Class({
-        init: function(gl) {
+        initialize: function(gl) {
             this._gl = gl;
 
             this._cameraPos = vec3.create();
@@ -168,18 +61,26 @@
             gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
             this._pickProgram = createPickProgram(gl);
-            this._renderProgram = createProgram(gl);
-            this._castProgram = createContactProgram(gl);
 
-            this._rayCastModel = Models.createPlane(gl, 1, 1);
+            this._rayCastModel = Models.createContactPlane(gl);
+            this._currentProgram = null;
 
             this.models = [];
             this._contactPoints = [];
         },
 
-        _renderModelPrologue: function(model, prog) {
+        _setProgram: function(program) {
             var gl = this._gl;
 
+            this._currentProgram = program;
+            gl.useProgram(this._currentProgram);
+            return this._currentProgram;
+        },
+
+        _renderModelPrologue: function(model) {
+            var gl = this._gl;
+
+            var prog = this._currentProgram;
             gl.bindBuffer(gl.ARRAY_BUFFER, model.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.elementBuffer);
             gl.uniform1f(prog.modelHeightLocation, model.height);
@@ -189,8 +90,9 @@
             gl.vertexAttribPointer(prog.positionLocation, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(prog.positionLocation);
         },
-        _renderModelEpilogue: function(model, prog) {
+        _renderModelEpilogue: function(model) {
             var gl = this._gl;
+            var prog = this._currentProgram;
 
             gl.disableVertexAttribArray(prog.positionLocation);
         },
@@ -198,16 +100,19 @@
         _renderModel: function(model) {
             var gl = this._gl;
 
-            this._renderModelPrologue(model, this._renderProgram);
+            this._setProgram(model.program);
+            this._renderModelPrologue(model);
             model.primitives.forEach(function(prim) {
                 var color = prim.color;
-                if (prim == model.surface.prim && model.surface.picked)
+                if (model.surface && model.surface.picked && prim == model.surface.prim)
                     color = [0.75, 0.6, 0.4];
 
-                gl.uniform3fv(this._renderProgram.modelColorLocation, color);
+                if (color)
+                    gl.uniform3fv(this._currentProgram.modelColorLocation, color);
+
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
             }.bind(this));
-            this._renderModelEpilogue(model, this._renderProgram);
+            this._renderModelEpilogue(model);
         },
         _renderPickBuffer: function() {
             var gl = this._gl;
@@ -218,15 +123,15 @@
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-            gl.useProgram(this._pickProgram);
+            var prog = this._setProgram(this._pickProgram);
             this.models.forEach(function(model, i) {
                 var color = new Float32Array([0, 0, 0, 1.0]);
                 color[0] = i / 255.0;
-                gl.uniform4fv(this._pickProgram.pickIdLocation, color);
-                this._renderModelPrologue(model, this._pickProgram);
+                gl.uniform4fv(prog.pickIdLocation, color);
+                this._renderModelPrologue(model);
                 var prim = model.surface.prim;
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-                this._renderModelEpilogue(model, this._pickProgram);
+                this._renderModelEpilogue(model);
             }.bind(this));
             gl.disable(gl.CULL_FACE);
         },
@@ -236,8 +141,6 @@
             gl.enable(gl.DEPTH_TEST);
             gl.clearColor(0.2, 0.2, 0.4, 1);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            gl.useProgram(this._renderProgram);
-
             this.models.forEach(this._renderModel.bind(this));
         },
         setCamera: function(pos, look) {
@@ -321,7 +224,6 @@
         _renderContactPoints: function() {
             var gl = this._gl;
 
-            gl.useProgram(this._castProgram);
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
             gl.enable(gl.POLYGON_OFFSET_FILL);
@@ -330,11 +232,7 @@
                 var rayCastModel = this._rayCastModel;
                 mat4.identity(rayCastModel.localMatrix);
                 mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, contactPoint);
-                this._renderModelPrologue(rayCastModel, this._castProgram);
-                rayCastModel.primitives.forEach(function(prim) {
-                    gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-                });
-                this._renderModelEpilogue(rayCastModel, this._castProgram);
+                this._renderModel(rayCastModel);
             }.bind(this));
             gl.disable(gl.POLYGON_OFFSET_FILL);
             gl.disable(gl.BLEND);
@@ -353,6 +251,10 @@
             this._renderContactPoints();
         },
     });
+
+    function clamp(v, min, max) {
+        return Math.max(Math.min(v, max), min);
+    }
 
     window.addEventListener('load', function() {
         var canvas = document.querySelector("canvas");

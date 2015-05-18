@@ -1,3 +1,5 @@
+// Contains all the models in the scene, and shader code.
+
 (function(exports) {
     "use strict";
 
@@ -11,6 +13,101 @@
 
     var VERT_N_ITEMS = 3;
     var VERT_N_BYTES = VERT_N_ITEMS * Float32Array.BYTES_PER_ELEMENT;
+
+    // A dumb hack to have "multiline strings".
+    function M(X) { return X.join('\n'); }
+
+    var VERT_SHADER_SOURCE = M([
+        'uniform mat4 u_modelView;',
+        'uniform mat4 u_localMatrix;',
+        'uniform mat4 u_projection;',
+        'attribute vec3 a_position;',
+        '',
+        'varying float v_lightIntensity;',
+        'uniform float u_modelHeight;',
+        '',
+        'void main() {',
+        '    v_lightIntensity = abs(a_position.y / u_modelHeight);',
+        '',
+        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
+        '}',
+    ]);
+
+    var FRAG_SHADER_SOURCE = M([
+        'precision mediump float;',
+        '',
+        'uniform vec3 u_modelColor;',
+        'varying float v_lightIntensity;',
+        '',
+        'void main() {',
+        '    vec3 color = u_modelColor;',
+        '    vec3 lit = mix(color, vec3(0), v_lightIntensity);',
+        '    gl_FragColor = vec4(lit, 1.0);',
+        '}',
+    ]);
+
+    function createProgram(gl) {
+        var vertShader = GLUtils.compileShader(gl, VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
+        var fragShader = GLUtils.compileShader(gl, FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
+
+        var prog = gl.createProgram();
+        gl.attachShader(prog, vertShader);
+        gl.attachShader(prog, fragShader);
+        gl.linkProgram(prog);
+
+        prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
+        prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
+        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
+        prog.positionLocation = gl.getAttribLocation(prog, "a_position");
+        prog.modelColorLocation = gl.getUniformLocation(prog, "u_modelColor");
+        prog.modelHeightLocation = gl.getUniformLocation(prog, "u_modelHeight");
+
+        return prog;
+    }
+
+    var CONTACT_VERT_SHADER_SOURCE = M([
+        'uniform mat4 u_modelView;',
+        'uniform mat4 u_localMatrix;',
+        'uniform mat4 u_projection;',
+        'attribute vec3 a_position;',
+        'varying vec3 v_position;',
+        '',
+        'void main() {',
+        '    v_position = a_position;',
+        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
+        '}',
+    ]);
+
+    var CONTACT_FRAG_SHADER_SOURCE = M([
+        'precision mediump float;',
+        '',
+        'uniform vec4 u_pickId;',
+        'varying vec3 v_position;',
+        '',
+        'void main() {',
+        '    vec3 color = vec3(1.0, 1.0, 1.0);',
+        '    float dist = distance(v_position.xz, vec2(0.0, 0.0));',
+        '    float a = 0.5 - abs(dist - 0.5);',
+        '    gl_FragColor = vec4(color, a);',
+        '}',
+    ]);
+
+    function createContactProgram(gl) {
+        var vertShader = GLUtils.compileShader(gl, CONTACT_VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
+        var fragShader = GLUtils.compileShader(gl, CONTACT_FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
+
+        var prog = gl.createProgram();
+        gl.attachShader(prog, vertShader);
+        gl.attachShader(prog, fragShader);
+        gl.linkProgram(prog);
+
+        prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
+        prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
+        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
+        prog.positionLocation = gl.getAttribLocation(prog, "a_position");
+
+        return prog;
+    }
 
     Models.createPlatform = function (gl) {
         var N = 16;
@@ -49,6 +146,7 @@
         model.localMatrix = mat4.create();
         model.primitives = [];
         model.surface = {};
+        model.program = createProgram(gl);
 
         // Build the "surface".
 
@@ -171,6 +269,7 @@
         model.name = 'box';
         model.height = HEIGHT * 2;
         model.localMatrix = mat4.create();
+        model.program = createProgram(gl);
 
         var SURFACE_N_VERTS = 4;
 
@@ -305,6 +404,7 @@
         model.name = 'plane';
         model.height = 0;
         model.localMatrix = mat4.create();
+        model.program = createProgram(gl);
 
         var verts = new Float32Array(VERT_N_ITEMS * 4);
         var indxs = new Uint8Array(4);
@@ -348,6 +448,12 @@
         model.elementBuffer = elementBuffer;
 
         return model;
+    };
+
+    Models.createContactPlane = function(gl) {
+        var plane = Models.createPlane(gl, 1, 1);
+        plane.program = createContactProgram(gl);
+        return plane;
     };
 
     exports.Models = Models;
