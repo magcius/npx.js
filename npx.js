@@ -154,14 +154,6 @@
         return Math.max(Math.min(v, max), min);
     }
 
-    function Class(obj) {
-        function c() {
-            this.init.apply(this, arguments);
-        };
-        c.prototype = Object.create(obj);
-        return c;
-    }
-
     var Scene = new Class({
         init: function(gl) {
             this._gl = gl;
