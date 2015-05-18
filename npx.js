@@ -110,95 +110,135 @@
         return Math.max(Math.min(v, max), min);
     }
 
-    function createScene(gl) {
-        var cameraPos = vec3.create();
-        var cameraLook = vec3.create();
+    function Class(obj) {
+        function c() {
+            this.init.apply(this, arguments);
+        };
+        c.prototype = Object.create(obj);
+        return c;
+    }
 
-        var modelView = mat4.create();
+    var Scene = new Class({
+        init: function(gl) {
+            this._gl = gl;
 
-        var projection = mat4.create();
-        mat4.perspective(projection, Math.PI / 4, gl.viewportWidth / gl.viewportHeight, 0.2, 256);
+            this._cameraPos = vec3.create();
+            this._cameraLook = vec3.create();
+            this._modelView = mat4.create();
 
-        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+            this._projection = mat4.create();
+            mat4.perspective(this._projection, Math.PI / 4, gl.viewportWidth / gl.viewportHeight, 0.2, 256);
 
-        var pickProgram = createPickProgram(gl);
-        var renderProgram = createProgram(gl);
+            gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
-        var prog = null;
-        function setProgram(program) {
-            prog = program;
-            gl.useProgram(prog);
-        }
+            this._pickProgram = createPickProgram(gl);
+            this._renderProgram = createProgram(gl);
 
-        function renderModelPrologue(model) {
+            this._hasPick = false;
+
+            this._rayCastModel = Models.createBox(gl, 1, 1, 1);
+
+            this.models = [];
+        },
+
+        _renderModelPrologue: function(model, prog) {
+            var gl = this._gl;
+
             gl.bindBuffer(gl.ARRAY_BUFFER, model.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.elementBuffer);
             gl.uniform1f(prog.modelHeightLocation, model.height);
-            gl.uniformMatrix4fv(prog.projectionLocation, false, projection);
-            gl.uniformMatrix4fv(prog.modelViewLocation, false, modelView);
+            gl.uniformMatrix4fv(prog.projectionLocation, false, this._projection);
+            gl.uniformMatrix4fv(prog.modelViewLocation, false, this._modelView);
             gl.uniformMatrix4fv(prog.localMatrixLocation, false, model.localMatrix);
             gl.vertexAttribPointer(prog.positionLocation, 3, gl.FLOAT, false, 0, 0);
             gl.enableVertexAttribArray(prog.positionLocation);
-        }
-        function renderModelEpilogue(model) {
-            gl.disableVertexAttribArray(prog.positionLocation);
-        }
+        },
+        _renderModelEpilogue: function(model, prog) {
+            var gl = this._gl;
 
-        function renderModel(model) {
-            renderModelPrologue(model);
+            gl.disableVertexAttribArray(prog.positionLocation);
+        },
+
+        _renderModel: function(model) {
+            var gl = this._gl;
+
+            this._renderModelPrologue(model, this._renderProgram);
             model.primitives.forEach(function(prim) {
                 var color = prim.color;
                 if (prim == model.surface.prim && model.surface.picked) {
                     color = [0.75, 0.8, 0];
                     model.surface.picked = false;
                 }
-                gl.uniform3fv(prog.modelColorLocation, color);
+                gl.uniform3fv(this._renderProgram.modelColorLocation, color);
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-            });
-            renderModelEpilogue(model);
-        }
-
-        var models = [];
-        function attachModel(model) {
-            models.push(model);
-        }
-        function setCamera(cameraPos_, cameraLook_) {
-            vec3.copy(cameraPos, cameraPos_);
-            vec3.copy(cameraLook, cameraLook_);
-            mat4.lookAt(modelView, cameraPos, cameraLook, [0, 1, 0]);
-        }
-        function render() {
-            gl.enable(gl.DEPTH_TEST);
-            gl.clearColor(0.2, 0.2, 0.4, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            setProgram(renderProgram);
-            models.forEach(renderModel);
-            if (wasPicked)
-                renderModel(rayCastModel);
-        }
-
-        var rayCastModel = Models.createBox(gl, 1, 1, 1);
-
-        function pickSurface(x, y) {
-            if (x < -1 || x > 1) return null;
-            if (y < -1 || y > 1) return null;
+            }.bind(this));
+            this._renderModelEpilogue(model, this._renderProgram);
+        },
+        _renderPickBuffer: function() {
+            var gl = this._gl;
 
             gl.enable(gl.DEPTH_TEST);
             gl.enable(gl.CULL_FACE);
             gl.cullFace(gl.FRONT);
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            setProgram(pickProgram);
-            models.forEach(function(model, i) {
+
+            gl.useProgram(this._pickProgram);
+            this.models.forEach(function(model, i) {
                 var color = new Float32Array([0, 0, 0, 1.0]);
                 color[0] = i / 255.0;
-                gl.uniform4fv(prog.pickIdLocation, color);
-                renderModelPrologue(model);
+                gl.uniform4fv(this._pickProgram.pickIdLocation, color);
+                this._renderModelPrologue(model, this._pickProgram);
                 var prim = model.surface.prim;
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-                renderModelEpilogue(model);
-            });
+                this._renderModelEpilogue(model, this._pickProgram);
+            }.bind(this));
             gl.disable(gl.CULL_FACE);
+        },
+        _render: function() {
+            var gl = this._gl;
+
+            gl.enable(gl.DEPTH_TEST);
+            gl.clearColor(0.2, 0.2, 0.4, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.useProgram(this._renderProgram);
+
+            this.models.forEach(this._renderModel.bind(this));
+            if (this._hasPick)
+                this._renderModel(this._rayCastModel);
+        },
+        setCamera: function(pos, look) {
+            var gl = this._gl;
+
+            vec3.copy(this._cameraPos, pos);
+            vec3.copy(this._cameraLook, look);
+            mat4.lookAt(this._modelView, this._cameraPos, this._cameraLook, [0, 1, 0]);
+        },
+
+        _unprojRay: function(out, x, y) {
+            var rayClip = vec4.clone([x, y, -1, 1]);
+            var rayEye = vec4.create();
+            var projInv = mat4.create();
+            mat4.invert(projInv, this._projection);
+            vec4.transformMat4(rayEye, rayClip, projInv);
+            rayEye = vec4.clone([rayEye[0], rayEye[1], -1, 0]);
+
+            var rayWorld = vec4.create();
+            var mvInv = mat4.create();
+            mat4.invert(mvInv, this._modelView);
+            vec4.transformMat4(rayWorld, rayEye, mvInv);
+            rayWorld = vec3.clone([rayWorld[0], rayWorld[1], rayWorld[2]]);
+            vec3.normalize(out, rayWorld);
+        },
+
+        setPickCoordinates: function(x, y) {
+            this._pickX = x; this._pickY = y;
+        },
+        _pickSurface: function(x, y) {
+            var gl = this._gl;
+
+            if (x < -1 || x > 1) return null;
+            if (y < -1 || y > 1) return null;
 
             var pixel = new Uint8Array(4);
 
@@ -212,41 +252,23 @@
                 return null;
 
             var i = pixel[0];
-            return models[i];
-        }
+            return this.models[i];
+        },
 
-        function unprojRay(out, x, y) {
-            var rayClip = vec4.clone([x, y, -1, 1]);
-            var rayEye = vec4.create();
-            var projInv = mat4.create();
-            mat4.invert(projInv, projection);
-            vec4.transformMat4(rayEye, rayClip, projInv);
-            rayEye = vec4.clone([rayEye[0], rayEye[1], -1, 0]);
+        _castRay: function(x, y) {
+            this._hasPick = false;
 
-            var rayWorld = vec4.create();
-            var mvInv = mat4.create();
-            mat4.invert(mvInv, modelView);
-            vec4.transformMat4(rayWorld, rayEye, mvInv);
-            rayWorld = vec3.clone([rayWorld[0], rayWorld[1], rayWorld[2]]);
-            vec3.normalize(out, rayWorld);
-        }
-
-        var wasPicked = false;
-
-        function castRay(x, y) {
-            wasPicked = false;
-
-            var model = pickSurface(x, y);
+            var model = this._pickSurface(x, y);
             if (!model)
                 return;
 
-            wasPicked = true;
+            this._hasPick = true;
             var surface = model.surface;
             surface.picked = true;
 
             var direction = vec3.create();
-            unprojRay(direction, x, y);
-            var pos = cameraPos;
+            this._unprojRay(direction, x, y);
+            var pos = this._cameraPos;
 
             var surfacePlaneN = surface.normal;
             var surfacePlaneV = vec3.clone(surface.origin);
@@ -260,20 +282,23 @@
             vec3.scale(out, direction, t);
             vec3.add(out, pos, out);
 
+            var rayCastModel = this._rayCastModel;
             mat4.identity(rayCastModel.localMatrix);
             // mat4.multiply(rayCastModel.localMatrix, rayCastModel.localMatrix, model.localMatrix);
             // XXX: hack it so that the model is centered around the cursor
             out[1] += 0.5;
             mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, out);
-        }
+        },
 
-        var scene = {};
-        scene.attachModel = attachModel;
-        scene.setCamera = setCamera;
-        scene.castRay = castRay;
-        scene.render = render;
-        return scene;
-    }
+        attachModel: function(model) {
+            this.models.push(model);
+        },
+        update: function() {
+            this._renderPickBuffer();
+            this._castRay(this._pickX, this._pickY);
+            this._render();
+        },
+    });
 
     window.addEventListener('load', function() {
         var canvas = document.querySelector("canvas");
@@ -281,7 +306,7 @@
         gl.viewportWidth = canvas.width;
         gl.viewportHeight = canvas.height;
 
-        var scene = createScene(gl);
+        var scene = new Scene(gl);
 
         var platform = Models.createPlatform(gl);
         scene.attachModel(platform);
@@ -337,9 +362,8 @@
 
             setCameraFromTP(T, P);
 
-            scene.castRay(rx, ry);
-            if (!isKeyDown('X'))
-                scene.render();
+            scene.setPickCoordinates(rx, ry);
+            scene.update();
 
             requestAnimationFrame(update);
         }
