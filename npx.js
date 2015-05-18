@@ -210,7 +210,7 @@
             model.primitives.forEach(function(prim) {
                 var color = prim.color;
                 if (prim == model.surface.prim && model.surface.picked)
-                    color = [0.75, 0.8, 0];
+                    color = [0.75, 0.6, 0.4];
 
                 gl.uniform3fv(this._renderProgram.modelColorLocation, color);
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
