@@ -300,6 +300,56 @@
         return model;
     };
 
+    Models.createPlane = function(gl) {
+        var model = {};
+        model.name = 'plane';
+        model.height = 0;
+        model.localMatrix = mat4.create();
+
+        var verts = new Float32Array(VERT_N_ITEMS * 4);
+        var indxs = new Uint8Array(4);
+
+        verts[0]  = -1;
+        verts[1]  = 0;
+        verts[2]  = -1;
+        verts[3]  = 1;
+        verts[4]  = 0;
+        verts[5]  = -1;
+        verts[6]  = -1;
+        verts[7]  = 0;
+        verts[8]  = 1;
+        verts[9]  = 1;
+        verts[10] = 0;
+        verts[11] = 1;
+
+        model.primitives = [];
+        var prim;
+
+        indxs[0] = 0;
+        indxs[1] = 1;
+        indxs[2] = 2;
+        indxs[3] = 3;
+
+        prim = {};
+        prim.start = 0;
+        prim.count = 4;
+        prim.drawType = gl.TRIANGLE_STRIP;
+        model.primitives.push(prim);
+
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+        var elementBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indxs, gl.STATIC_DRAW);
+
+        model.buffer = buffer;
+        model.elementBuffer = elementBuffer;
+
+        return model;
+    };
+
     exports.Models = Models;
 
 })(window);

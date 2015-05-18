@@ -106,6 +106,49 @@
         return prog;
     }
 
+    var CONTACT_VERT_SHADER_SOURCE = M([
+        'uniform mat4 u_modelView;',
+        'uniform mat4 u_localMatrix;',
+        'uniform mat4 u_projection;',
+        'attribute vec3 a_position;',
+        'varying vec3 v_position;',
+        '',
+        'void main() {',
+        '    v_position = a_position;',
+        '    gl_Position = u_projection * u_modelView * u_localMatrix * vec4(a_position, 1.0);',
+        '}',
+    ]);
+
+    var CONTACT_FRAG_SHADER_SOURCE = M([
+        'precision mediump float;',
+        '',
+        'uniform vec4 u_pickId;',
+        'varying vec3 v_position;',
+        '',
+        'void main() {',
+        '    vec3 color = vec3(1.0, 0.0, 0.0);',
+        '    float dist = distance(v_position.xz, vec2(0.0, 0.0));',
+        '    gl_FragColor = vec4(color, 1.0 - dist);',
+        '}',
+    ]);
+
+    function createContactProgram(gl) {
+        var vertShader = compileShader(gl, CONTACT_VERT_SHADER_SOURCE, gl.VERTEX_SHADER);
+        var fragShader = compileShader(gl, CONTACT_FRAG_SHADER_SOURCE, gl.FRAGMENT_SHADER);
+
+        var prog = gl.createProgram();
+        gl.attachShader(prog, vertShader);
+        gl.attachShader(prog, fragShader);
+        gl.linkProgram(prog);
+
+        prog.modelViewLocation = gl.getUniformLocation(prog, "u_modelView");
+        prog.projectionLocation = gl.getUniformLocation(prog, "u_projection");
+        prog.localMatrixLocation = gl.getUniformLocation(prog, "u_localMatrix");
+        prog.positionLocation = gl.getAttribLocation(prog, "a_position");
+
+        return prog;
+    }
+
     function clamp(v, min, max) {
         return Math.max(Math.min(v, max), min);
     }
@@ -133,8 +176,9 @@
 
             this._pickProgram = createPickProgram(gl);
             this._renderProgram = createProgram(gl);
+            this._castProgram = createContactProgram(gl);
 
-            this._rayCastModel = Models.createBox(gl, 1, 1, 1);
+            this._rayCastModel = Models.createPlane(gl, 1, 1);
 
             this.models = [];
             this._contactPoints = [];
@@ -280,6 +324,28 @@
         attachModel: function(model) {
             this.models.push(model);
         },
+
+        _renderContactPoints: function() {
+            var gl = this._gl;
+
+            gl.useProgram(this._castProgram);
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+            gl.enable(gl.POLYGON_OFFSET_FILL);
+            gl.polygonOffset(-1.0, 1.0);
+            this._contactPoints.forEach(function(contactPoint) {
+                var rayCastModel = this._rayCastModel;
+                mat4.identity(rayCastModel.localMatrix);
+                mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, contactPoint);
+                this._renderModelPrologue(rayCastModel, this._castProgram);
+                rayCastModel.primitives.forEach(function(prim) {
+                    gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
+                });
+                this._renderModelEpilogue(rayCastModel, this._castProgram);
+            }.bind(this));
+            gl.disable(gl.POLYGON_OFFSET_FILL);
+            gl.disable(gl.BLEND);
+        },
         update: function() {
             this._contactPoints = [];
 
@@ -291,15 +357,7 @@
             this._castRay(this._pickX, this._pickY);
             this._render();
 
-            console.log(this._contactPoints.length);
-            this._contactPoints.forEach(function(contactPoint) {
-                var rayCastModel = this._rayCastModel;
-                mat4.identity(rayCastModel.localMatrix);
-                mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, contactPoint);
-                // XXX: hack it so that the model is centered around the cursor
-                mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, [0, 0.5, 0]);
-                this._renderModel(rayCastModel);
-            }.bind(this));
+            this._renderContactPoints();
         },
     });
 
