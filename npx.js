@@ -244,7 +244,7 @@
             var py = ((y+1)/2 * viewport[3]) | 0;
             gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
             // if we aren't opaque, we didn't hit anything
-            if (pixel[3] == 0)
+            if (pixel[3] != 255)
                 return null;
 
             var i = pixel[0];
