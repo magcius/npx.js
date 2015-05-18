@@ -134,11 +134,10 @@
             this._pickProgram = createPickProgram(gl);
             this._renderProgram = createProgram(gl);
 
-            this._hasPick = false;
-
             this._rayCastModel = Models.createBox(gl, 1, 1, 1);
 
             this.models = [];
+            this._contactPoints = [];
         },
 
         _renderModelPrologue: function(model, prog) {
@@ -165,10 +164,9 @@
             this._renderModelPrologue(model, this._renderProgram);
             model.primitives.forEach(function(prim) {
                 var color = prim.color;
-                if (prim == model.surface.prim && model.surface.picked) {
+                if (prim == model.surface.prim && model.surface.picked)
                     color = [0.75, 0.8, 0];
-                    model.surface.picked = false;
-                }
+
                 gl.uniform3fv(this._renderProgram.modelColorLocation, color);
                 gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
             }.bind(this));
@@ -204,8 +202,6 @@
             gl.useProgram(this._renderProgram);
 
             this.models.forEach(this._renderModel.bind(this));
-            if (this._hasPick)
-                this._renderModel(this._rayCastModel);
         },
         setCamera: function(pos, look) {
             var gl = this._gl;
@@ -256,13 +252,10 @@
         },
 
         _castRay: function(x, y) {
-            this._hasPick = false;
-
             var model = this._pickSurface(x, y);
             if (!model)
                 return;
 
-            this._hasPick = true;
             var surface = model.surface;
             surface.picked = true;
 
@@ -281,22 +274,32 @@
             var out = vec3.create();
             vec3.scale(out, direction, t);
             vec3.add(out, pos, out);
-
-            var rayCastModel = this._rayCastModel;
-            mat4.identity(rayCastModel.localMatrix);
-            // mat4.multiply(rayCastModel.localMatrix, rayCastModel.localMatrix, model.localMatrix);
-            // XXX: hack it so that the model is centered around the cursor
-            out[1] += 0.5;
-            mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, out);
+            this._contactPoints.push(out);
         },
 
         attachModel: function(model) {
             this.models.push(model);
         },
         update: function() {
+            this._contactPoints = [];
+
+            this.models.forEach(function(model) {
+                model.surface.picked = false;
+            });
+
             this._renderPickBuffer();
             this._castRay(this._pickX, this._pickY);
             this._render();
+
+            console.log(this._contactPoints.length);
+            this._contactPoints.forEach(function(contactPoint) {
+                var rayCastModel = this._rayCastModel;
+                mat4.identity(rayCastModel.localMatrix);
+                mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, contactPoint);
+                // XXX: hack it so that the model is centered around the cursor
+                mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, [0, 0.5, 0]);
+                this._renderModel(rayCastModel);
+            }.bind(this));
         },
     });
 
