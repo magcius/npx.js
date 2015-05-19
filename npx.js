@@ -62,7 +62,7 @@
 
             this._pickProgram = createPickProgram(gl);
 
-            this._rayCastModel = Models.createContactPlane(gl);
+            this._contactPlane = Models.createContactPlane(gl);
             this._currentProgram = null;
 
             this.models = [];
@@ -229,10 +229,10 @@
             gl.enable(gl.POLYGON_OFFSET_FILL);
             gl.polygonOffset(-1.0, 1.0);
             this._contactPoints.forEach(function(contactPoint) {
-                var rayCastModel = this._rayCastModel;
-                mat4.identity(rayCastModel.localMatrix);
-                mat4.translate(rayCastModel.localMatrix, rayCastModel.localMatrix, contactPoint);
-                this._renderModel(rayCastModel);
+                var model = this._contactPlane;
+                mat4.identity(model.localMatrix);
+                mat4.translate(model.localMatrix, model.localMatrix, contactPoint);
+                this._renderModel(model);
             }.bind(this));
             gl.disable(gl.POLYGON_OFFSET_FILL);
             gl.disable(gl.BLEND);
