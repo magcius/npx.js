@@ -46,6 +46,23 @@
         return prog;
     }
 
+    var RenderContext = new Class({
+        Name: 'RenderContext',
+
+        initialize: function(gl) {
+            this._gl = gl;
+
+            this.currentProgram = null;
+        },
+
+        setProgram: function(prog) {
+            var gl = this._gl;
+
+            this.currentProgram = prog;
+            gl.useProgram(this.currentProgram);
+        },
+    });
+
     // The main renderer.
     var Scene = new Class({
         initialize: function(gl) {
@@ -60,89 +77,18 @@
 
             gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
-            this._pickProgram = createPickProgram(gl);
+            this._contactPlane = new Models.ContactPlane(gl);
 
-            this._contactPlane = Models.createContactPlane(gl);
-            this._currentProgram = null;
+            this._renderCtx = new RenderContext(gl);
+            this._renderCtx.modelView = this._modelView;
+            this._renderCtx.projection = this._projection;
+
+            this._pickProgram = createPickProgram(gl);
 
             this.models = [];
             this._contactPoints = [];
         },
 
-        _setProgram: function(program) {
-            var gl = this._gl;
-
-            this._currentProgram = program;
-            gl.useProgram(this._currentProgram);
-            return this._currentProgram;
-        },
-
-        _renderModelPrologue: function(model) {
-            var gl = this._gl;
-
-            var prog = this._currentProgram;
-            gl.bindBuffer(gl.ARRAY_BUFFER, model.buffer);
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, model.elementBuffer);
-            gl.uniform1f(prog.modelHeightLocation, model.height);
-            gl.uniformMatrix4fv(prog.projectionLocation, false, this._projection);
-            gl.uniformMatrix4fv(prog.modelViewLocation, false, this._modelView);
-            gl.uniformMatrix4fv(prog.localMatrixLocation, false, model.localMatrix);
-            gl.vertexAttribPointer(prog.positionLocation, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(prog.positionLocation);
-        },
-        _renderModelEpilogue: function(model) {
-            var gl = this._gl;
-            var prog = this._currentProgram;
-
-            gl.disableVertexAttribArray(prog.positionLocation);
-        },
-
-        _renderModel: function(model) {
-            var gl = this._gl;
-
-            this._setProgram(model.program);
-            this._renderModelPrologue(model);
-            model.primitives.forEach(function(prim) {
-                var color = prim.color;
-                if (model.surface && model.surface.picked && prim == model.surface.prim)
-                    color = [0.75, 0.6, 0.4];
-
-                if (color)
-                    gl.uniform3fv(this._currentProgram.modelColorLocation, color);
-
-                gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-            }.bind(this));
-            this._renderModelEpilogue(model);
-        },
-        _renderPickBuffer: function() {
-            var gl = this._gl;
-
-            gl.enable(gl.DEPTH_TEST);
-            gl.enable(gl.CULL_FACE);
-            gl.cullFace(gl.FRONT);
-            gl.clearColor(0, 0, 0, 0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-            var prog = this._setProgram(this._pickProgram);
-            this.models.forEach(function(model, i) {
-                var color = new Float32Array([0, 0, 0, 1.0]);
-                color[0] = i / 255.0;
-                gl.uniform4fv(prog.pickIdLocation, color);
-                this._renderModelPrologue(model);
-                var prim = model.surface.prim;
-                gl.drawElements(prim.drawType, prim.count, gl.UNSIGNED_BYTE, prim.start);
-                this._renderModelEpilogue(model);
-            }.bind(this));
-            gl.disable(gl.CULL_FACE);
-        },
-        _render: function() {
-            var gl = this._gl;
-
-            gl.enable(gl.DEPTH_TEST);
-            gl.clearColor(0.2, 0.2, 0.4, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            this.models.forEach(this._renderModel.bind(this));
-        },
         setCamera: function(pos, look) {
             var gl = this._gl;
 
@@ -168,9 +114,10 @@
         },
 
         setPickCoordinates: function(x, y) {
-            this._pickX = x; this._pickY = y;
+            this._pickX = x;
+            this._pickY = y;
         },
-        _pickSurface: function(x, y) {
+        _pickModel: function(x, y) {
             var gl = this._gl;
 
             if (x < -1 || x > 1) return null;
@@ -192,12 +139,12 @@
         },
 
         _castRay: function(x, y) {
-            var model = this._pickSurface(x, y);
+            var model = this._pickModel(x, y);
             if (!model)
                 return;
 
-            var surface = model.surface;
-            surface.picked = true;
+            // XXX: pick surfaces, not models
+            var surface = model._surface;
 
             var direction = vec3.create();
             this._unprojRay(direction, x, y);
@@ -214,6 +161,8 @@
             var out = vec3.create();
             vec3.scale(out, direction, t);
             vec3.add(out, pos, out);
+
+            model.setContactPoint(out);
             this._contactPoints.push(out);
         },
 
@@ -221,6 +170,34 @@
             this.models.push(model);
         },
 
+        _renderPickBuffer: function() {
+            var gl = this._gl;
+            var ctx = this._renderCtx;
+
+            gl.enable(gl.DEPTH_TEST);
+            gl.enable(gl.CULL_FACE);
+            gl.cullFace(gl.FRONT);
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            this._renderCtx.setProgram(this._pickProgram);
+            this.models.forEach(function(model, i) {
+                var pickId = new Float32Array([0, 0, 0, 1.0]);
+                pickId[0] = i / 255.0;
+                gl.uniform4fv(ctx.currentProgram.pickIdLocation, pickId);
+                model.pick(this._renderCtx, pickId);
+            }.bind(this));
+            gl.disable(gl.CULL_FACE);
+        },
+        _render: function() {
+            var gl = this._gl;
+
+            gl.enable(gl.DEPTH_TEST);
+            gl.clearColor(0.2, 0.2, 0.4, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            this.models.forEach(function(model) {
+                model.render(this._renderCtx);
+            }.bind(this));
+        },
         _renderContactPoints: function() {
             var gl = this._gl;
 
@@ -232,16 +209,15 @@
                 var model = this._contactPlane;
                 mat4.identity(model.localMatrix);
                 mat4.translate(model.localMatrix, model.localMatrix, contactPoint);
-                this._renderModel(model);
+                model.render(this._renderCtx);
             }.bind(this));
             gl.disable(gl.POLYGON_OFFSET_FILL);
             gl.disable(gl.BLEND);
         },
         update: function() {
             this._contactPoints = [];
-
             this.models.forEach(function(model) {
-                model.surface.picked = false;
+                model.setContactPoint(null);
             });
 
             this._renderPickBuffer();
@@ -264,10 +240,10 @@
 
         var scene = new Scene(gl);
 
-        var platform = Models.createPlatform(gl);
+        var platform = new Models.Platform(gl);
         scene.attachModel(platform);
 
-        var bridge = Models.createBox(gl, 20, 6, .2);
+        var bridge = new Models.Box(gl, 20, 6, .2);
         mat4.translate(bridge.localMatrix, bridge.localMatrix, [0, 2, 0]);
         scene.attachModel(bridge);
 
