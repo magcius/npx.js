@@ -5,21 +5,54 @@
     <title>npx.js</title>
   </head>
   <body>
-    <script src="gl-matrix.js"></script>
-    <script src="class.js"></script>
-    <script src="gl-utils.js"></script>
-    <script src="models.js"></script>
-    <script src="npx.js"></script>
+    <style>
+      body {
+        background: #aaa;
+        display: flex;
+        justify-content: center;
+        margin: 0;
+      }
+      article {
+        background: #eee;
+        width: 1000px;
+        color: #336;
+        padding: 2em;
+        font-size: 16pt;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      }
+      a {
+        text-decoration: none;
+        border-bottom: 1px dashed #336;
+      }
+      blockquote {
+        color: #66a;
+        font-style: italic;
+      }
+      h1 {
+          font: 36pt sans-serif;
+          font-weight: bold;
+          font-variant: small-caps;
+          margin-left: 1em;
+          color: #99c;
+          text-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+      }
+      .placeholder {
+          color: red;
+          font-weight: bold;
+          background: #ccc;
+          padding: 2em;
+          text-align: center;
+      }
+    </style>
 
+    <article>
     <blockquote>
         Here's an example: remember those huge rotating gears in one of the early shareware levels of Duke Nukem
         3D? Imagine if a general physics engine animation loop. Suddenly the gears become more than just eye
         candy as one comes off its axle and rolls down the hall after you, Indiana-Jones style. Or imagine
         shooting a gear with a missile, causing it to roll down the hall and crush your friend who was about
-        to frag you from behind!
-    </blockquote>
-    <p> ... </p>
-    <blockquote>
+        to frag you from behind!<br><br>
+        ...<br><br>
         However, most physics engines in todays' games are pretty weak, doing just enough to keep that car from
         falling out of the world, but not enough to take the game to the next level of interaction &mdash; where
         a wrecked car's debris might explode onto the track, careening into the wall and other cars, tires
@@ -39,7 +72,7 @@
         give us. The <a href="https://youtu.be/4ddJ1OKV63Q?t=146">impressive physics capabilities of Half-Life 2</a>
         were relegated to a few, boring, and, dare I say it, scripted puzzles in the final game.
     </p>
-    <p>
+    <p class=placeholder>
         PLACEHOLDER: Better footage for see-saw puzzle in Route Kanal (https://youtu.be/iwjl4xMF92w?t=333). Maybe some others?
     </p>
     <p>
@@ -56,7 +89,7 @@
         rolls just right down the aisle... because otherwise...
     </p>
 
-    <p>
+    <p class=placeholder>
         PLACEHOLDER: Demo roll of bad and boring physics. Large Indiana Jones rocks slowly sliding down an aisle.
         Sonic 2006. Ubisoft video games.
     </p>
@@ -103,7 +136,7 @@
         but it's not computed at real-time. In fact, in Dark Souls 2, I can think of one example of physics in gameplay,
         and it's one that's gone wrong (well, besides the removed ragdolls).
     </p>
-    <p>
+    <p class=placeholder>
         PLACEHOLDER: old giant king or whatever, the head rolling off the platform. supercut of ten different attempts
         and it not killing enemies half the time? the memory of jeigh sucks and so does the from software B team.
     </p>
@@ -133,7 +166,7 @@
         a long metal rod in it, and suspend it above the ground.
     </p>
 
-    <p>
+    <p class=placeholder>
         PLACEHOLDER: IKEA cross-section of a see-saw
     </p>
 
@@ -183,5 +216,6 @@
         Nintendo chooses their primitives and their physical model to be coarser and higher level. Rather than choose the
         rigid body and the revolve joint, they opt to model the seesaw or the wobbly platform directly.
     </p>
+    </article>
   </body>
 </html>
