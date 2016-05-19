@@ -3,38 +3,56 @@
   <head>
     <meta charset="utf8">
     <title>npx.js</title>
+    <link href='https://fonts.googleapis.com/css?family=Pathway+Gothic+One' rel='stylesheet' type='text/css'>
   </head>
   <body>
     <style>
       body {
           background: #aaa;
-          display: flex;
-          justify-content: center;
           margin: 0;
       }
       article {
+          margin-left: 2em;
           background: #eee;
           width: 1000px;
           color: #336;
-          padding: 2em;
+          padding: 3em;
           font-size: 16pt;
           box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+          text-align: justify;
       }
       a {
+          color: #66a;
           text-decoration: none;
-          border-bottom: 1px dashed #336;
+          border-bottom: 1px dashed #66a;
       }
       blockquote {
           color: #66a;
           font-style: italic;
+          margin-top: 0;
+          margin-bottom: 0;
+      }
+      author {
+          font-weight: bold;
+          text-align: right;
+          display: block;
+          margin: 1em;
       }
       h1 {
-          font: 36pt sans-serif;
+          font: 72pt 'Pathway Gothic One';
           font-weight: bold;
           font-variant: small-caps;
-          margin-left: 1em;
-          color: #99c;
-          text-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+          line-height: .9;
+          color: #aac;
+          margin: 0;
+      }
+      h2 {
+          font: 48pt 'Pathway Gothic One';
+          font-weight: bold;
+          font-variant: small-caps;
+          line-height: .7;
+          color: #aac;
+          margin: 0;
       }
       .placeholder {
           color: red;
@@ -61,11 +79,11 @@
         and motivating &mdash; rather than based on static animations &mdash; so they can react to new physical
         stimuli.
     </blockquote>
-    <p>
-        <a href="http://chrishecker.com">Chris Hecker</a>, from
+    <author>
+        &mdash; <a href="http://chrishecker.com">Chris Hecker</a>, from
         <a href="http://chrishecker.com/images/d/df/Gdmphys1.pdf">Physics, the Next Frontier</a>.
         Game Development Magazine, 1996
-    </p>
+    </author>
     <p>
         It's this series, published from 1996, that code powering Havok and PhysX was based on. Twenty years later,
         I haven't seen the amount of creativity and innovation that we all imagined real-time physics engines would
