@@ -5,15 +5,183 @@
     <title>npx.js</title>
   </head>
   <body>
-    <canvas width="800" height="600"></canvas>
-    <style>
-    canvas { margin-top: -300px; margin-left: -400px; position: absolute; top: 50%; left: 50%; }
-    </style>
-
     <script src="gl-matrix.js"></script>
     <script src="class.js"></script>
     <script src="gl-utils.js"></script>
     <script src="models.js"></script>
     <script src="npx.js"></script>
+
+    <blockquote>
+        Here's an example: remember those huge rotating gears in one of the early shareware levels of Duke Nukem
+        3D? Imagine if a general physics engine animation loop. Suddenly the gears become more than just eye
+        candy as one comes off its axle and rolls down the hall after you, Indiana-Jones style. Or imagine
+        shooting a gear with a missile, causing it to roll down the hall and crush your friend who was about
+        to frag you from behind!
+    </blockquote>
+    <p> ... </p>
+    <blockquote>
+        However, most physics engines in todays' games are pretty weak, doing just enough to keep that car from
+        falling out of the world, but not enough to take the game to the next level of interaction &mdash; where
+        a wrecked car's debris might explode onto the track, careening into the wall and other cars, tires
+        rolling into oncoming traffic. Other often ignored physical possibilities include everything from simple
+        rotational effects induced by being hit off center, to having the creatures in the game be self-balancing
+        and motivating &mdash; rather than based on static animations &mdash; so they can react to new physical
+        stimuli.
+    </blockquote>
+    <p>
+        <a href="http://chrishecker.com">Chris Hecker</a>, from
+        <a href="http://chrishecker.com/images/d/df/Gdmphys1.pdf">Physics, the Next Frontier</a>.
+        Game Development Magazine, 1996
+    </p>
+    <p>
+        It's this series, published from 1996, that code powering Havok and PhysX was based on. Twenty years later,
+        I haven't seen the amount of creativity and innovation that we all imagined real-time physics engines would
+        give us. The <a href="https://youtu.be/4ddJ1OKV63Q?t=146">impressive physics capabilities of Half-Life 2</a>
+        were relegated to a few, boring, and, dare I say it, scripted puzzles in the final game.
+    </p>
+    <p>
+        PLACEHOLDER: Better footage for see-saw puzzle in Route Kanal (https://youtu.be/iwjl4xMF92w?t=333). Maybe some others?
+    </p>
+    <p>
+        Well, we've seen self-balancing and self-motivating characters in
+        <a href="https://en.wikipedia.org/wiki/Spore_%282008_video_game%29">Spore</a>, and I only call it out because
+        <a href="http://chrishecker.com/How_To_Animate_a_Character_You've_Never_Seen_Before">Chris Hecker himself</a>
+        was one of the people to develop such self-balancing characters.
+    </p>
+    <p>
+        Part of this is that simply adding real-life physics won't instantly make things exciting. There's a whole
+        reason that pulling off those kinds of stunts
+        <a href="https://www.youtube.com/watch?v=XWNYh9vfvgQ">require teams of people and weeks of planning</a> to make sure the
+        gear and axel is built to break in that specific way, and the charges go off with microsecond timing so it
+        rolls just right down the aisle... because otherwise...
+    </p>
+
+    <p>
+        PLACEHOLDER: Demo roll of bad and boring physics. Large Indiana Jones rocks slowly sliding down an aisle.
+        Sonic 2006. Ubisoft video games.
+    </p>
+
+    <h1>Global Physics in Video Games is a Choice</h1>
+
+    <p>
+        I think lots of people don't realize that physics in video games, at least the common technologies
+        we have right now, are wrong. In the same way that level designers don't plant every
+        tree and build every crate from scratch, they simply drag and drop it, our common "video game physics"
+        systems are simplified systems with primitives like "a tree" or "a crate". We don't build our world by
+        putting down molecules and atoms and running simulations of complex chemical interactions of them. And
+        we still don't racing games by building and emulating combustion engines.
+    </p>
+    <p>
+        And, although obvious, this <em>isn't</em> just because of lack of power &mdash; I doubt a player would
+        want to have a pit stop at the gas station to add more fuel after every match in Rocket League.
+        Games should be fun experiences on their own merits.
+    </p>
+    <p>
+        That isn't to say that video game physics, when well-integrated, can't lead to amazing experiences.
+        Even in the real-world, pool billiards is a simple game that
+        <a href="https://www.youtube.com/watch?v=cdVRvYnqj6w">plays on the intuitions of physics and elastic collision</a>,
+        and Angry Birds can be seen as a video game version of it.
+    </p>
+    <p>
+        Portal is similar. Although fans <a href="https://www.reddit.com/r/gaming/comments/vkl3k">might argue</a>
+        on the specifics of how well it maps to "real-world" physics, and whether moving portals might violate
+        conservation of momentum, the code behind the game doesn't actually care. The game has a close-enough-to-real-life,
+        albeit, wrong, physics engine which it uses to build puzzles around teleporting and flying through space.
+    </p>
+    <p>
+        It's worth noting that in both of these cases, it's not like physics was dragged in on the side because it's
+        the engine default and the standard and it's "a required thing in video games", a position I see becoming
+        more and more common over time. Just like any other design decision, like the art style, like the music,
+        the exact style and modifications of the physics models were chosen to match the game proper.
+    </p>
+    <p>
+        And Dark Souls, one of my favorite video games of all time, uses the Havok Engine, but mostly only for things
+        that don't matter, like the gibs of broken pots, and ragdolls left behind by fallen enemies. The rocks
+        rolling downhill in Sen's Fortress, for instance, are entirely animated with traditional techniques.
+        Admit it &mdash; a physics engine, even properly tuned, wouldn't be able to recreate that kind of a sensation.
+        Physics simulations <em>were</em> probably used to help the animators figure out how the rocks would roll,
+        but it's not computed at real-time. In fact, in Dark Souls 2, I can think of one example of physics in gameplay,
+        and it's one that's gone wrong (well, besides the removed ragdolls).
+    </p>
+    <p>
+        PLACEHOLDER: old giant king or whatever, the head rolling off the platform. supercut of ten different attempts
+        and it not killing enemies half the time? the memory of jeigh sucks and so does the from software B team.
+    </p>
+    <p>
+        Why have physics engines failed us? Why do we need to go back to hardcoded animations for things to work
+        properly? Why can't the giant stone head rolling downhill have <a href="https://en.wikipedia.org/wiki/12_basic_principles_of_animation">weight, depth, and balance?</a>
+    </p>
+
+
+    <h2> the part where i talk about simplified rigid body models </h2>
+    <p>
+        You see, when we started crafting "physics engines" long ago, we knew we couldn't emulate the behavior
+        of atoms themselves, especially when <a href="https://en.wikipedia.org/wiki/Fundamental_interaction">we don't quite understand them ourselves</a>.
+        We chose large-ish objects, which can't bend or break, and we defined they move through space, collide
+        with each other, and bounce off of walls and floors.
+    </p>
+    <p>
+        These objects, since they can't bend or break, are known as "rigid bodies", and the laws governing the motion
+        of these objects are known as "rigid body dynamics". Plenty has been written about rigid body dynamics,
+        and everything you need to know practically about how these bodies move can be found in a traditional
+        high school physics class. Objects in motion stay in motion, travelling in the same speed and direction,
+        until acted upon by an external force. External forces affect an object's acceleration, which affects
+        an object's velocity, which affects an object's position.
+    </p>
+    <p>
+        I'll assume that we all know how to build a simple see-saw &mdash; we take a long two-by-four, shove
+        a long metal rod in it, and suspend it above the ground.
+    </p>
+
+    <p>
+        PLACEHOLDER: IKEA cross-section of a see-saw
+    </p>
+
+    <p>
+        Enough imagining, actually. Click on it &mdash; it's interactive. Drag the see-saw around.
+    </p>
+    <p>
+        I built this using the Unity engine, and published it as WebGL. As an iframe. I used Unity's physics system
+        to build a cube, and then put a "revolve joint" on it, adjusted the axis you can use, limited it in a specific
+        range, put a spring and a damper on it. The rest of everything &mdash; the rod in the middle, the thing
+        suspending it above the ground &mdash; that's simply ornamental. The only "dynamic" part of my system is the
+        rigid body that can tilt, and also the box that I dropped on it.
+    </p>
+    <p>
+        When modelling systems like this in video games, puzzle designers and world builders work with primitives,
+        like these, which define the interactions that two rigid bodies might have with each other.
+    </p>
+    <p>
+        Modelling systems like this has a downside. These primitives can often be brittle and easily get out of
+        control. And when building large puzzles that have multiple moving parts.
+        Additionally, without special behavior, these primitives can require a lot of tweaking of all the different
+        parameters to get a desired effect. Adjusting a single parameter in here might completely change the dynamic
+        of a puzzle.
+    </p>
+
+
+    <h2> nintendo isn't shit because they have better primitives which aren't "box that moves and also collides" </h2>
+
+    <p>
+        Nintendo's video games are based on a central, in-house engine, "J", that we can see marks of all over their
+        games, built up over 20 years. 2D UI layout and animation tools, a cutscene planner, 3D positional audio
+        and music sequencing, even GPU text rendering and particles that integrate with their deferred renderer.
+        The one piece of shared code I have never seen? Physics. They have a common math library and collision helpers,
+        but they program each game to their own tastes.
+    </p>
+    <p>
+        They've modeled effects and behavior after physics for years, but never directly use a "physics engine" to do
+        so. Every wobbly platform, every seesaw, every boomerang that returns back to you, all hand-coded for the best
+        effect.
+    </p>
+    <p>
+        I think this is a fairly unusual "secret sauce" among Nintendo. Rather than endlessly tweak the "spring" parameter
+        on a revolve joint, they craft exactly what they want to, using physics as a base for their own models and their
+        own behavior.
+    </p>
+    <p>
+        Nintendo chooses their primitives and their physical model to be coarser and higher level. Rather than choose the
+        rigid body and the revolve joint, they opt to model the seesaw or the wobbly platform directly.
+    </p>
   </body>
 </html>

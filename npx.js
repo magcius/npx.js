@@ -202,7 +202,7 @@
             var gl = this._gl;
 
             gl.enable(gl.BLEND);
-            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+            gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
             gl.enable(gl.POLYGON_OFFSET_FILL);
             gl.polygonOffset(-1.0, 1.0);
             this._contactPoints.forEach(function(contactPoint) {
