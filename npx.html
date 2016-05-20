@@ -8,7 +8,7 @@
   <body>
     <style>
       body {
-          background: #aaa;
+          background: linear-gradient(to bottom, #666, #aaa) fixed;
           margin: 0;
       }
       article {
@@ -17,6 +17,7 @@
           width: 1000px;
           color: #336;
           padding: 3em;
+          padding-top: 0;
           font-size: 16pt;
           box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
           text-align: justify;
@@ -29,8 +30,10 @@
       blockquote {
           color: #66a;
           font-style: italic;
-          margin-top: 0;
-          margin-bottom: 0;
+          margin: 0;
+          padding: 1em;
+          box-shadow: 0 0 25px rgba(0, 0, 0, 0.2) inset;
+          border-radius: 0 0 20px 20px;
       }
       author {
           font-weight: bold;
@@ -65,7 +68,7 @@
 
     <article>
     <blockquote>
-        Here's an example: remember those huge rotating gears in one of the early shareware levels of Duke Nukem
+        <strong>Here's an example</strong>: remember those huge rotating gears in one of the early shareware levels of Duke Nukem
         3D? Imagine if a general physics engine animation loop. Suddenly the gears become more than just eye
         candy as one comes off its axle and rolls down the hall after you, Indiana-Jones style. Or imagine
         shooting a gear with a missile, causing it to roll down the hall and crush your friend who was about
@@ -97,7 +100,7 @@
         Well, we've seen self-balancing and self-motivating characters in
         <a href="https://en.wikipedia.org/wiki/Spore_%282008_video_game%29">Spore</a>, and I only call it out because
         <a href="http://chrishecker.com/How_To_Animate_a_Character_You've_Never_Seen_Before">Chris Hecker himself</a>
-        was one of the people to develop such self-balancing characters.
+        was one of the people to develop them.
     </p>
     <p>
         Part of this is that simply adding real-life physics won't instantly make things exciting. There's a whole
@@ -140,13 +143,14 @@
         albeit, wrong, physics engine which it uses to build puzzles around teleporting and flying through space.
     </p>
     <p>
-        It's worth noting that in both of these cases, it's not like physics was dragged in on the side because it's
-        the engine default and the standard and it's "a required thing in video games", a position I see becoming
-        more and more common over time. Just like any other design decision, like the art style, like the music,
-        the exact style and modifications of the physics models were chosen to match the game proper.
+        And PopCap's Peggle, inspired by Japanese pachinko machines and Atari's Breakout, intentionally uses
+        an exaggerated cartoony physics engine, <a href="http://web.archive.org/web/20130531124111/http://www.edge-online.com/features/feature-making-ofacirc/">custom-built for the game</a>.
+        And inline with the rest of the game's humor, the physics engine even sometimes even feels like a character,
+        sarcasticly sending your mistimed balls directly into the gutter, and mocking you by elongating a
+        bounce gone wrong.
     </p>
     <p>
-        And Dark Souls, one of my favorite video games of all time, uses the Havok Engine, but mostly only for things
+        Dark Souls, one of my favorite video games of all time, uses the Havok Engine, but mostly only for things
         that don't matter, like the gibs of broken pots, and ragdolls left behind by fallen enemies. The rocks
         rolling downhill in Sen's Fortress, for instance, are entirely animated with traditional techniques.
         Admit it &mdash; a physics engine, even properly tuned, wouldn't be able to recreate that kind of a sensation.
@@ -163,10 +167,29 @@
         properly? Why can't the giant stone head rolling downhill have <a href="https://en.wikipedia.org/wiki/12_basic_principles_of_animation">weight, depth, and balance?</a>
     </p>
 
+    <h2> choices are good and you should make more of them in your vidoe game </h2>
+    <p>
+        In all of these cases, it's not like physics was simply <em>added</em> into the game because it was
+        a feature of the engine; a "required thing" for a video game to feel complete. I worry that with the uprise
+        of engines like Unity and Unreal, with their relatively easy ability to add physics-based gameplay, a physics
+        engine is just seen as "something a game needs" like a rendering engine and a sound engine. But just as
+        a state-of-the-art rendering engine doesn't magically decide an art style for you, and how a 3D positional
+        audio engine doesn't automatically compose a soundtrack for you, a physics engine doesn't and shouldn't
+        decide the gameplay decisions a game has.
+    </p>
+    <p>
+        Rendering engines have over time added shader-based effects, physically based rendering, and the ability
+        and want to use alternative cell-shaded cartoon-y art styles. Music engines have added a wide variety of
+        looping styles, interactivity to sync up with gameplay, and runtime filters to make it sound like e.g.
+        you are in a tunnel. But the "physics" engines, unfortunately, haven't adapted to the times. We still
+        simulate a global world, with global effects like gravity, in which rigid bodies with mass move around
+        with forces and constraints. Realistic, to an extend, perhaps, but unforutnately limited for the kinds
+        of effects that we might want to create.
+    </p>
 
     <h2> the part where i talk about simplified rigid body models </h2>
     <p>
-        You see, when we started crafting "physics engines" long ago, we knew we couldn't emulate the behavior
+        When we started crafting "physics engines" long ago, we knew we couldn't emulate the behavior
         of atoms themselves, especially when <a href="https://en.wikipedia.org/wiki/Fundamental_interaction">we don't quite understand them ourselves</a>.
         We chose large-ish objects, which can't bend or break, and we defined they move through space, collide
         with each other, and bounce off of walls and floors.
